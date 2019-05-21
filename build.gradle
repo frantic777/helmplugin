@@ -26,14 +26,14 @@ gradlePlugin {
 
 pluginBundle {
     website = 'http://www.gradle.org/'
-    vcsUrl = 'https://github.com/gradle/gradle'
-    description = 'Greetings from here!'
-    tags = ['greetings', 'salutations']
+    vcsUrl = 'https://github.com/frantic777/helmplugin'
+    description = 'Helm integration plugin.'
+    tags = ['helm', 'kubernetes']
 
     plugins {
         greetingsPlugin {
             // id is captured from java-gradle-plugin configuration
-            displayName = 'Gradle Greeting plugin'
+            displayName = 'Gradle Helm plugin'
         }
     }
 }
