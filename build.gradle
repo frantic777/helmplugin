@@ -13,6 +13,16 @@ repositories {
 }
 
 dependencies {
+    compile("org.apache.commons:commons-compress:1.18")
+    testImplementation gradleTestKit()
+    testImplementation("junit:junit:4.12")
+    testRuntime("org.junit.vintage:junit-vintage-engine:5.4.2")
+    testCompile("org.junit.jupiter:junit-jupiter-api:5.4.2")
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.4.2")
+}
+
+test {
+    useJUnitPlatform()
 }
 
 gradlePlugin {
@@ -25,13 +35,13 @@ gradlePlugin {
 }
 
 pluginBundle {
-    website = 'http://www.gradle.org/'
+    website = 'https://github.com/frantic777/helmplugin'
     vcsUrl = 'https://github.com/frantic777/helmplugin'
     description = 'Helm integration plugin.'
     tags = ['helm', 'kubernetes']
 
     plugins {
-        greetingsPlugin {
+        helmPlugin {
             // id is captured from java-gradle-plugin configuration
             displayName = 'Gradle Helm plugin'
         }

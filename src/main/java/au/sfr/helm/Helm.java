@@ -3,24 +3,21 @@ package au.sfr.helm;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.Input;
 
+import javax.inject.Inject;
+
 public class Helm extends DefaultTask {
     @Input
-    private final String version;
+    private String version;
     @Input
-    private final String chartLocation;
+    private String chartLocation;
     @Input
-    private final String uploadUrl;
+    private String uploadUrl;
     @Input
-    private final String user;
+    private String user;
     @Input
-    private final String password;
+    private String password;
 
-    public Helm(String version, String chartLocation, String uploadUrl, String user, String password) {
-        this.version = version;
-        this.chartLocation = chartLocation;
-        this.uploadUrl = uploadUrl;
-        this.user = user;
-        this.password = password;
+    public Helm() {
     }
 
     public String getVersion() {
