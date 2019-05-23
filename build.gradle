@@ -1,10 +1,8 @@
 plugins {
     id 'java-gradle-plugin'
     id "com.gradle.plugin-publish" version "0.10.1"
+    id 'net.researchgate.release' version '2.6.0'
 }
-
-group 'au.sfr'
-version '1.0-SNAPSHOT'
 
 sourceCompatibility = 11
 
@@ -47,3 +45,5 @@ pluginBundle {
         }
     }
 }
+
+afterReleaseBuild.dependsOn publishPlugins
