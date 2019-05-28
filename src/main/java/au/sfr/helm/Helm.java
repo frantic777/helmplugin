@@ -3,8 +3,6 @@ package au.sfr.helm;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.Input;
 
-import javax.inject.Inject;
-
 public class Helm extends DefaultTask {
     @Input
     private String version;

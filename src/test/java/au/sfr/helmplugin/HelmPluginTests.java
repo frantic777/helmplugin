@@ -2,38 +2,58 @@ package au.sfr.helmplugin;
 
 
 import org.gradle.internal.impldep.org.junit.Assert;
-import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 
-import static org.gradle.internal.impldep.org.hamcrest.CoreMatchers.equalTo;
-import static org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE;
-
-public class HelmPluginTests {
+class HelmPluginTests {
     @TempDir
     Path testProjectDir;
     private static final String DOWNLOAD_HELM_TASK = "downloadHelm";
+    private static final String PACKAGE_HELM_TASK = "packHelm";
 
     @Test
-    public void testHelmDownload() throws Exception {
+    void testHelmDownload() throws Exception {
         setUpTestProject();
 
-        BuildResult result = GradleRunner.create()
+        GradleRunner.create()
                 .withProjectDir(testProjectDir.toFile())
                 .withPluginClasspath()
                 .withDebug(true)
                 .withArguments(DOWNLOAD_HELM_TASK, "--stacktrace")
+                .forwardStdOutput(new BufferedWriter(new OutputStreamWriter(System.out)))
                 .build();
 
-        Assert.assertThat(
-                Objects.requireNonNull(result.task(":" + DOWNLOAD_HELM_TASK)).getOutcome(),
-                equalTo(UP_TO_DATE));
+        ProcessBuilder pb = new ProcessBuilder(testProjectDir + "/build/helm/helm");
+        pb.inheritIO();
+        Process process = pb.start();
+        int code = process.waitFor();
+        Assert.assertEquals(0, code);
+    }
+
+    @Test
+    void testPackHelmChart() throws IOException, InterruptedException {
+        setUpTestProject();
+        copyTestChart();
+
+        GradleRunner.create()
+                .withProjectDir(testProjectDir.toFile())
+                .withPluginClasspath()
+                .withDebug(true)
+                .withArguments(PACKAGE_HELM_TASK, "--stacktrace")
+                .forwardStdOutput(new BufferedWriter(new OutputStreamWriter(System.out)))
+                .build();
+    }
+
+    private void copyTestChart() throws IOException {
+        Path buildFile = Files.createDirectories(testProjectDir.resolve("src").resolve("helm").resolve(testProjectDir.getFileName()));
+        System.out.println(buildFile);
     }
 
     private void setUpTestProject() throws IOException {
