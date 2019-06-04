@@ -5,7 +5,7 @@ import org.gradle.api.tasks.Input;
 
 public class Helm extends DefaultTask {
     @Input
-    private String version;
+    private String helmVersion;
     @Input
     private String chartLocation;
     @Input
@@ -18,8 +18,8 @@ public class Helm extends DefaultTask {
     public Helm() {
     }
 
-    public String getVersion() {
-        return version;
+    public String getHelmVersion() {
+        return helmVersion;
     }
 
     public String getChartLocation() {
