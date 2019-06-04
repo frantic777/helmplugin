@@ -11,12 +11,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Objects;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.zip.GZIPInputStream;
 
 public class HelmPlugin implements Plugin<Project> {
     public static final String DOWNLOAD_TASK = "helmDownload";
     public static final String PACK_TASK = "helmPack";
+    public static final String INIT_CLIENT_TASK = "helmInitClient";
     private static final String USER_HOME = System.getProperty("user.home");
     public static final String HELM_EXEC_LOCATION = USER_HOME + "/.helm/executable/";
     private static final String HELM_GROUP = "helm";
@@ -34,16 +36,18 @@ public class HelmPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getTasks().create(DOWNLOAD_TASK, Helm.class, this::downloadHelmTask);
         project.getTasks().create(PACK_TASK, Helm.class, this::packHelmTask);
+        project.getTasks().create(INIT_CLIENT_TASK, Helm.class, this::initHelmClientTask);
     }
 
-    private void packHelmTask(Helm task) {
-        Project project = task.getProject();
-        Object projectVersion = project.getVersion();
-        ProcessBuilder pb = new ProcessBuilder(HELM_EXEC_LOCATION + "helm", "package", "--version", projectVersion.toString(), project.getRootDir().toPath().resolve("src").resolve("helm").resolve(project.getName()).toString());
-        File workingDir = project.getRootDir().toPath().resolve("build").resolve("helm").toFile();
-        if (workingDir.exists() || workingDir.mkdirs()) {
-            pb.directory(workingDir);
-        }
+    private void initHelmClientTask(Helm task) {
+        task.setGroup(HELM_GROUP);
+        task.doLast(t -> {
+            ProcessBuilder pb = new ProcessBuilder(HELM_EXEC_LOCATION + "helm", "init", "--client-only");
+            runProcess(pb);
+        });
+    }
+
+    private void runProcess(ProcessBuilder pb) {
         try {
             pb.inheritIO();
             Process process = pb.start();
@@ -56,26 +60,45 @@ public class HelmPlugin implements Plugin<Project> {
         }
     }
 
+    private void packHelmTask(Helm task) {
+        task.setGroup(HELM_GROUP);
+        task.doLast(t -> {
+            Project project = task.getProject();
+            Object projectVersion = project.getVersion();
+            ProcessBuilder pb = new ProcessBuilder(HELM_EXEC_LOCATION + "helm", "package", "--version", projectVersion.toString(), project.getRootDir().toPath().resolve("src").resolve("helm").resolve(project.getName()).toString());
+            File workingDir = project.getRootDir().toPath().resolve("build").resolve("helm").toFile();
+            if (workingDir.exists() || workingDir.mkdirs()) {
+                pb.directory(workingDir);
+            }
+            runProcess(pb);
+        });
+    }
+
 
     private void downloadHelmTask(Helm task) {
-        try {
-            task.setGroup(HELM_GROUP);
-            String arch = System.getProperty(PROPERTY_ARCH).toLowerCase();
-            String os = System.getProperty(PROPERTY_OS).toLowerCase();
-            String tag = Objects.requireNonNullElse(task.getHelmVersion(), getLatestVersion());
+        task.setGroup(HELM_GROUP);
+        task.doLast(t -> {
+            try {
+                boolean exists = Files.walk(Path.of(HELM_EXEC_LOCATION)).anyMatch(path -> path.getFileName().startsWith("helm"));
+                if (!exists) {
+                    String arch = System.getProperty(PROPERTY_ARCH).toLowerCase();
+                    String os = System.getProperty(PROPERTY_OS).toLowerCase();
+                    String tag = task.getHelmVersion().length() > 0 ? task.getHelmVersion() : getLatestVersion();
 
-            String fileName = HELM_DIST_TEMPLATE.replace(PLACEHOLDER_TAG, tag).replace(PLACEHOLDER_OS, os).replace(PLACEHOLDER_ARCH, arch);
+                    String fileName = HELM_DIST_TEMPLATE.replace(PLACEHOLDER_TAG, tag).replace(PLACEHOLDER_OS, os).replace(PLACEHOLDER_ARCH, arch);
 
-            String downloadURL = URL_DOWNLOAD + fileName;
+                    String downloadURL = URL_DOWNLOAD + fileName;
 
-            TarArchiveInputStream files = new TarArchiveInputStream(new GZIPInputStream(new URL(downloadURL).openStream()));
-            boolean helmFound = extractHelm(files);
-            if (!helmFound) {
-                throw new RuntimeException("Helm executable not found.");
+                    TarArchiveInputStream files = new TarArchiveInputStream(new GZIPInputStream(new URL(downloadURL).openStream()));
+                    boolean helmFound = extractHelm(files);
+                    if (!helmFound) {
+                        throw new RuntimeException("Helm executable not found.");
+                    }
+                }
+            } catch (Exception ex) {
+                throw new RuntimeException("Failed downloading Helm executable", ex);
             }
-        } catch (Exception ex) {
-            throw new RuntimeException("Failed downloading Helm executable", ex);
-        }
+        });
     }
 
     private boolean extractHelm(TarArchiveInputStream files) throws IOException {

@@ -5,15 +5,15 @@ import org.gradle.api.tasks.Input;
 
 public class Helm extends DefaultTask {
     @Input
-    private String helmVersion;
+    private String helmVersion = "";
     @Input
-    private String chartLocation;
+    private String chartLocation = "";
     @Input
-    private String uploadUrl;
+    private String uploadUrl = "";
     @Input
-    private String user;
+    private String user = "";
     @Input
-    private String password;
+    private String password = "";
 
     public Helm() {
     }

@@ -43,6 +43,21 @@ class HelmPluginTests {
 
     @Test
     @Order(2)
+    void testHelmInitChart() throws IOException {
+        setUpTestProject();
+        copyTestChart();
+
+        GradleRunner.create()
+                .withProjectDir(testProjectDir.toFile())
+                .withPluginClasspath()
+                .withDebug(true)
+                .withArguments(HelmPlugin.INIT_CLIENT_TASK, "--stacktrace")
+                .forwardStdOutput(new BufferedWriter(new OutputStreamWriter(System.out)))
+                .build();
+    }
+
+    @Test
+    @Order(3)
     void testPackHelmChart() throws IOException {
         setUpTestProject();
         copyTestChart();
