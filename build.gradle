@@ -5,6 +5,7 @@ plugins {
 }
 
 sourceCompatibility = 11
+targetCompatibility = 11
 
 repositories {
     mavenCentral()
@@ -35,7 +36,7 @@ gradlePlugin {
 pluginBundle {
     website = 'https://github.com/frantic777/helmplugin'
     vcsUrl = 'https://github.com/frantic777/helmplugin'
-    description = 'Helm integration plugin.'
+    description = 'Helm integration plugin. !!!!WIP!!!!'
     tags = ['helm', 'kubernetes']
 
     plugins {
