@@ -5,10 +5,9 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.tasks.TaskOutputFilePropertyBuilder;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.URL;
@@ -16,6 +15,7 @@ import java.net.URLConnection;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
 
 public class HelmPlugin implements Plugin<Project> {
@@ -35,6 +35,7 @@ public class HelmPlugin implements Plugin<Project> {
     private static final String URL_LATEST_VERSION = "https://github.com/helm/helm/releases/latest";
     private static final String URL_DOWNLOAD = "https://kubernetes-helm.storage.googleapis.com/";
     private static final String HELM = "helm";
+    private static final AtomicReference<File> chartFile = new AtomicReference<>();
 
     @Override
     public void apply(Project project) {
@@ -47,12 +48,16 @@ public class HelmPlugin implements Plugin<Project> {
     private void pushChartTask(Helm task) {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
-            HttpClient.newBuilder().authenticator(new Authenticator() {
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(task.getUser(), task.getPassword().toCharArray());
-                }
-            });
+            if (chartFile.get()!=null) {
+                HttpClient.newBuilder().authenticator(new Authenticator() {
+                    @Override
+                    protected PasswordAuthentication getPasswordAuthentication() {
+                        return new PasswordAuthentication(task.getUser(), task.getPassword().toCharArray());
+                    }
+                });
+            } else {
+                throw new RuntimeException("Build chart first");
+            }
         });
     }
 
@@ -64,15 +69,18 @@ public class HelmPlugin implements Plugin<Project> {
         });
     }
 
-    private void runProcess(ProcessBuilder pb) {
+    private String runProcess(ProcessBuilder pb) {
         try {
             pb.inheritIO();
             Process process = pb.start();
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
             new Thread(() -> {
                 try {
                     for (int read = process.getInputStream().read(); read != -1; read = process.getInputStream().read()) {
                         System.out.write(read);
+                        os.write(read);
                     }
+                    os.flush();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -81,6 +89,7 @@ public class HelmPlugin implements Plugin<Project> {
             if (exitCode != 0) {
                 throw new RuntimeException("Exit code: " + exitCode);
             }
+            return os.toString();
         } catch (IOException | InterruptedException ex) {
             throw new RuntimeException(ex);
         }
@@ -96,7 +105,9 @@ public class HelmPlugin implements Plugin<Project> {
             if (workingDir.exists() || workingDir.mkdirs()) {
                 pb.directory(workingDir);
             }
-            runProcess(pb);
+            String result = runProcess(pb);
+            String chartLocation = result.split(": ")[1].trim();
+            chartFile.set(new File(chartLocation));
         });
     }
 
