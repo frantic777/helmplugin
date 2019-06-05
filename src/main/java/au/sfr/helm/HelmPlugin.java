@@ -13,6 +13,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.zip.GZIPInputStream;
 
 public class HelmPlugin implements Plugin<Project> {
@@ -50,6 +51,7 @@ public class HelmPlugin implements Plugin<Project> {
     private void runProcess(ProcessBuilder pb) {
         try {
             pb.inheritIO();
+            System.out.println(Arrays.toString(pb.command().toArray()));
             Process process = pb.start();
             int exitCode = process.waitFor();
             if (exitCode != 0) {
