@@ -9,17 +9,20 @@ import org.gradle.api.Project;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.Authenticator;
+import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.zip.GZIPInputStream;
 
 public class HelmPlugin implements Plugin<Project> {
     public static final String DOWNLOAD_TASK = "helmDownload";
     public static final String PACK_TASK = "helmPack";
     public static final String INIT_CLIENT_TASK = "helmInitClient";
+    public static final String PUSH_CHART_TASK = "helmPushChart";
     private static final String USER_HOME = System.getProperty("user.home");
     public static final String HELM_EXEC_LOCATION = USER_HOME + "/.helm/executable/";
     private static final String HELM_GROUP = "helm";
@@ -38,6 +41,19 @@ public class HelmPlugin implements Plugin<Project> {
         project.getTasks().create(DOWNLOAD_TASK, Helm.class, this::downloadHelmTask);
         project.getTasks().create(PACK_TASK, Helm.class, this::packHelmTask);
         project.getTasks().create(INIT_CLIENT_TASK, Helm.class, this::initHelmClientTask);
+        project.getTasks().create(PUSH_CHART_TASK, Helm.class, this::pushChartTask);
+    }
+
+    private void pushChartTask(Helm task) {
+        task.setGroup(HELM_GROUP);
+        task.doLast(t -> {
+            HttpClient.newBuilder().authenticator(new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(task.getUser(), task.getPassword().toCharArray());
+                }
+            });
+        });
     }
 
     private void initHelmClientTask(Helm task) {
@@ -51,8 +67,16 @@ public class HelmPlugin implements Plugin<Project> {
     private void runProcess(ProcessBuilder pb) {
         try {
             pb.inheritIO();
-            System.out.println(Arrays.toString(pb.command().toArray()));
             Process process = pb.start();
+            new Thread(() -> {
+                try {
+                    for (int read = process.getInputStream().read(); read != -1; read = process.getInputStream().read()) {
+                        System.out.write(read);
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 throw new RuntimeException("Exit code: " + exitCode);

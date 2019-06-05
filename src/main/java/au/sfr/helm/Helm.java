@@ -7,8 +7,6 @@ public class Helm extends DefaultTask {
     @Input
     private String helmVersion = "";
     @Input
-    private String chartLocation = "";
-    @Input
     private String uploadUrl = "";
     @Input
     private String user = "";
@@ -20,10 +18,6 @@ public class Helm extends DefaultTask {
 
     public String getHelmVersion() {
         return helmVersion;
-    }
-
-    public String getChartLocation() {
-        return chartLocation;
     }
 
     public String getUploadUrl() {
