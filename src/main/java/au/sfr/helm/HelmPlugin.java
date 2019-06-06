@@ -71,12 +71,12 @@ public class HelmPlugin implements Plugin<Project> {
 
     private String runProcess(ProcessBuilder pb) {
         try {
-            pb.inheritIO();
             Process process = pb.start();
+            InputStream is = process.getInputStream();
             ByteArrayOutputStream os = new ByteArrayOutputStream();
             new Thread(() -> {
                 try {
-                    for (int read = process.getInputStream().read(); read != -1; read = process.getInputStream().read()) {
+                    for (int read = is.read(); read != -1; read = process.getInputStream().read()) {
                         System.out.write(read);
                         os.write(read);
                     }
@@ -84,7 +84,7 @@ public class HelmPlugin implements Plugin<Project> {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-            });
+            }).start();
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 throw new RuntimeException("Exit code: " + exitCode);
