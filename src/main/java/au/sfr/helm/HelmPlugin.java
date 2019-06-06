@@ -7,11 +7,10 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
 import java.io.*;
-import java.net.Authenticator;
-import java.net.PasswordAuthentication;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.*;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
@@ -47,13 +46,24 @@ public class HelmPlugin implements Plugin<Project> {
     private void pushChartTask(Helm task) {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
-            if (chartFile.get() != null) {
-                HttpClient.newBuilder().authenticator(new Authenticator() {
+            File chartFile = HelmPlugin.chartFile.get();
+            if (chartFile != null) {
+                HttpClient httpClient = HttpClient.newBuilder().authenticator(new Authenticator() {
                     @Override
                     protected PasswordAuthentication getPasswordAuthentication() {
                         return new PasswordAuthentication(task.getUser(), task.getPassword().toCharArray());
                     }
-                });
+                }).build();
+                String publishUrl = task.getUploadUrl() + "/" + getLastFile(chartFile.toString());
+                try {
+                    HttpRequest request = HttpRequest.newBuilder(URI.create(publishUrl)).PUT(HttpRequest.BodyPublishers.ofFile(chartFile.toPath())).build();
+                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    if (response.statusCode() != 200) {
+                        throw new RuntimeException("Exit code " + response.statusCode() + "\n" + response.body());
+                    }
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             } else {
                 throw new RuntimeException("Build chart first");
             }
