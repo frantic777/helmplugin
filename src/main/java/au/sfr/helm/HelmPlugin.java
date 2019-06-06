@@ -13,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
 
@@ -37,6 +38,7 @@ public class HelmPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
+        project.getExtensions().create("helm", Helm.class);
         project.getTasks().create(DOWNLOAD_TASK, Helm.class, this::downloadHelmTask);
         project.getTasks().create(PACK_TASK, Helm.class, this::packHelmTask);
         project.getTasks().create(INIT_CLIENT_TASK, Helm.class, this::initHelmClientTask);
@@ -45,6 +47,7 @@ public class HelmPlugin implements Plugin<Project> {
 
     private void pushChartTask(Helm task) {
         task.setGroup(HELM_GROUP);
+        task.setDependsOn(Collections.singleton(PACK_TASK));
         task.doLast(t -> {
             File chartFile = HelmPlugin.chartFile.get();
             if (chartFile == null) {
