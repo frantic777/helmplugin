@@ -1,16 +1,9 @@
 package au.sfr.helm;
 
-import org.gradle.api.DefaultTask;
-import org.gradle.api.tasks.Input;
-
-public class Helm extends DefaultTask {
-    @Input
+public class Helm {
     private String helmVersion = "";
-    @Input
     private String uploadUrl = "";
-    @Input
     private String user = "";
-    @Input
     private String password = "";
 
     public Helm() {
@@ -30,5 +23,21 @@ public class Helm extends DefaultTask {
 
     public String getPassword() {
         return password;
+    }
+
+    public void setHelmVersion(String helmVersion) {
+        this.helmVersion = helmVersion;
+    }
+
+    public void setUploadUrl(String uploadUrl) {
+        this.uploadUrl = uploadUrl;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

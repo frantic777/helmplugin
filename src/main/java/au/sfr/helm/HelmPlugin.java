@@ -3,6 +3,7 @@ package au.sfr.helm;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
+import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -38,30 +39,30 @@ public class HelmPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
-        project.getExtensions().create("helm", Helm.class);
-        project.getTasks().create(DOWNLOAD_TASK, Helm.class, this::downloadHelmTask);
-        project.getTasks().create(PACK_TASK, Helm.class, this::packHelmTask);
-        project.getTasks().create(INIT_CLIENT_TASK, Helm.class, this::initHelmClientTask);
-        project.getTasks().create(PUSH_CHART_TASK, Helm.class, this::pushChartTask);
+        Helm helm = project.getExtensions().create("helm", Helm.class);
+        project.getTasks().create(DOWNLOAD_TASK, DefaultTask.class, task -> downloadHelmTask(task, helm));
+        project.getTasks().create(PACK_TASK, DefaultTask.class, this::packHelmTask);
+        project.getTasks().create(INIT_CLIENT_TASK, DefaultTask.class, this::initHelmClientTask);
+        project.getTasks().create(PUSH_CHART_TASK, DefaultTask.class, task -> pushChartTask(task, helm));
     }
 
-    private void pushChartTask(Helm task) {
+    private void pushChartTask(DefaultTask task, Helm helm) {
         task.setGroup(HELM_GROUP);
         task.setDependsOn(Collections.singleton(PACK_TASK));
         task.doLast(t -> {
             File chartFile = HelmPlugin.chartFile.get();
             if (chartFile == null) {
                 throw new RuntimeException("Build chart first");
-            } else if (task.getUploadUrl() == null || task.getUploadUrl().length() == 0) {
+            } else if (helm.getUploadUrl() == null || helm.getUploadUrl().length() == 0) {
                 throw new RuntimeException("URL is not set");
             }
             HttpClient httpClient = HttpClient.newBuilder().authenticator(new Authenticator() {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(task.getUser(), task.getPassword().toCharArray());
+                    return new PasswordAuthentication(helm.getUser(), helm.getPassword().toCharArray());
                 }
             }).build();
-            String publishUrl = task.getUploadUrl() + "/" + getLastFile(chartFile.toString());
+            String publishUrl = helm.getUploadUrl() + "/" + getLastFile(chartFile.toString());
             try {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(publishUrl)).PUT(HttpRequest.BodyPublishers.ofFile(chartFile.toPath())).build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -75,7 +76,7 @@ public class HelmPlugin implements Plugin<Project> {
         });
     }
 
-    private void initHelmClientTask(Helm task) {
+    private void initHelmClientTask(DefaultTask task) {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
             ProcessBuilder pb = new ProcessBuilder(HELM_EXEC_LOCATION + "helm", "init", "--client-only");
@@ -109,7 +110,7 @@ public class HelmPlugin implements Plugin<Project> {
         }
     }
 
-    private void packHelmTask(Helm task) {
+    private void packHelmTask(DefaultTask task) {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
             Project project = task.getProject();
@@ -126,7 +127,7 @@ public class HelmPlugin implements Plugin<Project> {
     }
 
 
-    private void downloadHelmTask(Helm task) {
+    private void downloadHelmTask(DefaultTask task, Helm helm) {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
             try {
@@ -134,7 +135,7 @@ public class HelmPlugin implements Plugin<Project> {
                 if (!exists) {
                     String arch = System.getProperty(PROPERTY_ARCH).toLowerCase();
                     String os = System.getProperty(PROPERTY_OS).toLowerCase();
-                    String tag = task.getHelmVersion().length() > 0 ? task.getHelmVersion() : getLatestVersion();
+                    String tag = helm.getHelmVersion().length() > 0 ? helm.getHelmVersion() : getLatestVersion();
 
                     String fileName = HELM_DIST_TEMPLATE.replace(PLACEHOLDER_TAG, tag).replace(PLACEHOLDER_OS, os).replace(PLACEHOLDER_ARCH, arch);
 
