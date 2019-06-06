@@ -68,6 +68,8 @@ public class HelmPlugin implements Plugin<Project> {
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() != 200) {
                     throw new RuntimeException("Exit code " + response.statusCode() + "\n" + response.body());
+                } else {
+                    System.out.println(response.body());
                 }
             } catch (IOException | InterruptedException e) {
                 throw new RuntimeException(e);
