@@ -5,7 +5,6 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.tasks.TaskOutputFilePropertyBuilder;
 
 import java.io.*;
 import java.net.Authenticator;
@@ -48,7 +47,7 @@ public class HelmPlugin implements Plugin<Project> {
     private void pushChartTask(Helm task) {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
-            if (chartFile.get()!=null) {
+            if (chartFile.get() != null) {
                 HttpClient.newBuilder().authenticator(new Authenticator() {
                     @Override
                     protected PasswordAuthentication getPasswordAuthentication() {
