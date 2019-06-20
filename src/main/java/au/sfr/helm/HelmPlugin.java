@@ -87,6 +87,10 @@ public class HelmPlugin implements Plugin<Project> {
     private void pushChartTask(DefaultTask task, Helm helm) {
         task.setGroup(HELM_GROUP);
         task.setDependsOn(Collections.singleton(PACK_TASK));
+        if (helm.isSslDisabled()) {
+            System.out.println("WARNING: Disabling SSL Checks");
+            disableSSLCertificateChecking();
+        }
         task.doLast(t -> {
             File chartFile = HelmPlugin.chartFile.get();
             if (chartFile == null) {
