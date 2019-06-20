@@ -7,6 +7,10 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.*;
 import java.net.*;
 import java.net.http.HttpClient;
@@ -14,6 +18,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
@@ -36,6 +44,36 @@ public class HelmPlugin implements Plugin<Project> {
     private static final String URL_DOWNLOAD = "https://kubernetes-helm.storage.googleapis.com/";
     private static final String HELM = "helm";
     private static final AtomicReference<File> chartFile = new AtomicReference<>();
+
+    private static void disableSSLCertificateChecking() {
+        TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
+            public X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+
+            @Override
+            public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
+                // Not implemented
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
+                // Not implemented
+            }
+        }};
+
+        try {
+            SSLContext sc = SSLContext.getInstance("TLS");
+
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void apply(Project project) {
@@ -128,11 +166,13 @@ public class HelmPlugin implements Plugin<Project> {
         });
     }
 
-
     private void downloadHelmTask(DefaultTask task, Helm helm) {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
             try {
+                if (helm.isSslDisabled()) {
+                    disableSSLCertificateChecking();
+                }
                 boolean exists = Files.walk(Path.of(HELM_EXEC_LOCATION)).anyMatch(path -> path.getFileName().startsWith("helm"));
                 if (!exists) {
                     String arch = System.getProperty(PROPERTY_ARCH).toLowerCase();
@@ -156,6 +196,7 @@ public class HelmPlugin implements Plugin<Project> {
     }
 
     private boolean extractHelm(TarArchiveInputStream files) throws IOException {
+        Files.createDirectories(Path.of(HELM_EXEC_LOCATION));
         ArchiveEntry entry = files.getNextEntry();
         boolean helmFound = false;
         while (entry != null) {
