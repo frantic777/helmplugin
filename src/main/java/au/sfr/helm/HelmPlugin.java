@@ -63,7 +63,7 @@ public class HelmPlugin implements Plugin<Project> {
         }};
 
         try {
-            SSLContext sc = SSLContext.getInstance("TLS");
+            SSLContext sc = SSLContext.getInstance("SSL");
 
             sc.init(null, trustAllCerts, new java.security.SecureRandom());
 
@@ -171,6 +171,7 @@ public class HelmPlugin implements Plugin<Project> {
         task.doLast(t -> {
             try {
                 if (helm.isSslDisabled()) {
+                    System.out.println("WARNING: Disabling SSL Checks");
                     disableSSLCertificateChecking();
                 }
                 boolean exists = Path.of(HELM_EXEC_LOCATION).toFile().exists() && Files.walk(Path.of(HELM_EXEC_LOCATION)).anyMatch(path -> path.getFileName().startsWith("helm"));
