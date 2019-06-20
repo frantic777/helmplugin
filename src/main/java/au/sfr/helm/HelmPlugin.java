@@ -173,7 +173,7 @@ public class HelmPlugin implements Plugin<Project> {
                 if (helm.isSslDisabled()) {
                     disableSSLCertificateChecking();
                 }
-                boolean exists = Files.walk(Path.of(HELM_EXEC_LOCATION)).anyMatch(path -> path.getFileName().startsWith("helm"));
+                boolean exists = Path.of(HELM_EXEC_LOCATION).toFile().exists() && Files.walk(Path.of(HELM_EXEC_LOCATION)).anyMatch(path -> path.getFileName().startsWith("helm"));
                 if (!exists) {
                     String arch = System.getProperty(PROPERTY_ARCH).toLowerCase();
                     String os = System.getProperty(PROPERTY_OS).toLowerCase();
