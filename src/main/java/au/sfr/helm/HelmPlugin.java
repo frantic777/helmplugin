@@ -44,6 +44,7 @@ public class HelmPlugin implements Plugin<Project> {
     private static final String URL_DOWNLOAD = "https://kubernetes-helm.storage.googleapis.com/";
     private static final String HELM = "helm";
     private static final AtomicReference<File> chartFile = new AtomicReference<>();
+    private static SSLContext sslContext;
 
     private static void disableSSLCertificateChecking() {
         TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
@@ -63,11 +64,11 @@ public class HelmPlugin implements Plugin<Project> {
         }};
 
         try {
-            SSLContext sc = SSLContext.getInstance("SSL");
+            sslContext = SSLContext.getInstance("SSL");
 
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
 
-            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
         } catch (KeyManagementException e) {
             e.printStackTrace();
         } catch (NoSuchAlgorithmException e) {
@@ -87,10 +88,6 @@ public class HelmPlugin implements Plugin<Project> {
     private void pushChartTask(DefaultTask task, Helm helm) {
         task.setGroup(HELM_GROUP);
         task.setDependsOn(Collections.singleton(PACK_TASK));
-        if (helm.isSslDisabled()) {
-            System.out.println("WARNING: Disabling SSL Checks");
-            disableSSLCertificateChecking();
-        }
         task.doLast(t -> {
             File chartFile = HelmPlugin.chartFile.get();
             if (chartFile == null) {
@@ -98,7 +95,13 @@ public class HelmPlugin implements Plugin<Project> {
             } else if (helm.getUploadUrl() == null || helm.getUploadUrl().length() == 0) {
                 throw new RuntimeException("URL is not set");
             }
-            HttpClient httpClient = HttpClient.newBuilder().authenticator(new Authenticator() {
+            HttpClient.Builder builder = HttpClient.newBuilder();
+            if (helm.isSslDisabled()) {
+                System.out.println("WARNING: Disabling SSL Checks");
+                disableSSLCertificateChecking();
+                builder = builder.sslContext(sslContext);
+            }
+            HttpClient httpClient = builder.authenticator(new Authenticator() {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
                     return new PasswordAuthentication(helm.getUser(), helm.getPassword().toCharArray());
