@@ -110,7 +110,7 @@ public class HelmPlugin implements Plugin<Project> {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(publishUrl)).PUT(HttpRequest.BodyPublishers.ofFile(chartFile.toPath())).build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() != 200) {
-                    String result = "POST code " + response.statusCode() + "\n" + response.body();
+                    String result = "WARNING: POST code " + response.statusCode() + "\n" + response.body();
                     if (helm.isIgnorePushError()) {
                         System.out.println(result);
                     } else {
