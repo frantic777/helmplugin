@@ -157,13 +157,16 @@ public class HelmPlugin implements Plugin<Project> {
 
     private void packHelmTask(DefaultTask task) {
         task.setGroup(HELM_GROUP);
+        String helmLocation = HELM_EXEC_LOCATION + "helm";
+        String helmCommand;
+        if (!new File(helmLocation).exists()) {
+            helmCommand = "helm";
+        } else {
+            helmCommand = helmLocation;
+        }
         task.doLast(t -> {
             Project project = task.getProject();
             Object projectVersion = project.getVersion();
-            String helmCommand = HELM_EXEC_LOCATION + "helm";
-            if (!new File(helmCommand).exists()) {
-                helmCommand = "helm";
-            }
             ProcessBuilder pb = new ProcessBuilder(helmCommand, "package", "--version", projectVersion.toString(), project.getProjectDir().toPath().resolve("src").resolve("helm").resolve(project.getName()).toString());
             File workingDir = project.getProjectDir().toPath().resolve("build").resolve("helm").toFile();
             if (workingDir.exists() || workingDir.mkdirs()) {
