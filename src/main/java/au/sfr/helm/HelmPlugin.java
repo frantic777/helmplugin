@@ -69,9 +69,7 @@ public class HelmPlugin implements Plugin<Project> {
             sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
 
             HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
-        } catch (KeyManagementException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
+        } catch (KeyManagementException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
     }
@@ -162,7 +160,11 @@ public class HelmPlugin implements Plugin<Project> {
         task.doLast(t -> {
             Project project = task.getProject();
             Object projectVersion = project.getVersion();
-            ProcessBuilder pb = new ProcessBuilder(HELM_EXEC_LOCATION + "helm", "package", "--version", projectVersion.toString(), project.getProjectDir().toPath().resolve("src").resolve("helm").resolve(project.getName()).toString());
+            String helmCommand = HELM_EXEC_LOCATION + "helm";
+            if (!new File(helmCommand).exists()) {
+                helmCommand = "helm";
+            }
+            ProcessBuilder pb = new ProcessBuilder(helmCommand, "package", "--version", projectVersion.toString(), project.getProjectDir().toPath().resolve("src").resolve("helm").resolve(project.getName()).toString());
             File workingDir = project.getProjectDir().toPath().resolve("build").resolve("helm").toFile();
             if (workingDir.exists() || workingDir.mkdirs()) {
                 pb.directory(workingDir);
