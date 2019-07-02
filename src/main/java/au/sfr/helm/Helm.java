@@ -5,7 +5,8 @@ public class Helm {
     private String uploadUrl = "";
     private String user = "";
     private String password = "";
-    private boolean sslDisabled = false;
+    private boolean sslChecksDisabled = false;
+    private boolean ignorePushError = false;
 
     public Helm() {
     }
@@ -42,11 +43,19 @@ public class Helm {
         this.password = password;
     }
 
-    public boolean isSslDisabled() {
-        return sslDisabled;
+    public boolean isSslChecksDisabled() {
+        return sslChecksDisabled;
     }
 
-    public void setSslDisabled(boolean sslDisabled) {
-        this.sslDisabled = sslDisabled;
+    public void setSslChecksDisabled(boolean sslChecksDisabled) {
+        this.sslChecksDisabled = sslChecksDisabled;
+    }
+
+    public boolean isIgnorePushError() {
+        return ignorePushError;
+    }
+
+    public void setIgnorePushError(boolean ignorePushError) {
+        this.ignorePushError = ignorePushError;
     }
 }

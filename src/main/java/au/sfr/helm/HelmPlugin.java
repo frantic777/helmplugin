@@ -94,7 +94,7 @@ public class HelmPlugin implements Plugin<Project> {
                 throw new RuntimeException("URL is not set");
             }
             HttpClient.Builder builder = HttpClient.newBuilder();
-            if (helm.isSslDisabled()) {
+            if (helm.isSslChecksDisabled()) {
                 System.out.println("WARNING: Disabling SSL Checks");
                 disableSSLCertificateChecking();
                 builder = builder.sslContext(sslContext);
@@ -110,7 +110,12 @@ public class HelmPlugin implements Plugin<Project> {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(publishUrl)).PUT(HttpRequest.BodyPublishers.ofFile(chartFile.toPath())).build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() != 200) {
-                    throw new RuntimeException("Exit code " + response.statusCode() + "\n" + response.body());
+                    String result = "POST code " + response.statusCode() + "\n" + response.body();
+                    if (helm.isIgnorePushError()) {
+                        System.out.println(result);
+                    } else {
+                        throw new RuntimeException(result);
+                    }
                 } else {
                     System.out.println(response.body());
                 }
@@ -182,7 +187,7 @@ public class HelmPlugin implements Plugin<Project> {
         task.setGroup(HELM_GROUP);
         task.doLast(t -> {
             try {
-                if (helm.isSslDisabled()) {
+                if (helm.isSslChecksDisabled()) {
                     System.out.println("WARNING: Disabling SSL Checks");
                     disableSSLCertificateChecking();
                 }
