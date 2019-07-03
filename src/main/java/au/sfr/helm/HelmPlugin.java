@@ -1,11 +1,11 @@
 package au.sfr.helm;
 
-import au.sfr.helm.writer.TapeArchiveChartWriter;
 import hapi.chart.ChartOuterClass;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.microbean.helm.chart.DirectoryChartLoader;
+import org.microbean.helm.chart.TapeArchiveChartWriter;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -26,6 +26,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.GZIPOutputStream;
 
 public class HelmPlugin implements Plugin<Project> {
     public static final String PACK_TASK = "helmPack";
@@ -133,7 +134,7 @@ public class HelmPlugin implements Plugin<Project> {
                 if (chartLocation.createNewFile()) {
                     System.out.println("Created " + chartLocation.toString() + " file");
                 }
-                TapeArchiveChartWriter chartWriter = new TapeArchiveChartWriter(new FileOutputStream(chartLocation));
+                TapeArchiveChartWriter chartWriter = new TapeArchiveChartWriter(new GZIPOutputStream(new FileOutputStream(chartLocation)));
                 ChartOuterClass.Chart.Builder chartBuilder = new DirectoryChartLoader().load(project.getProjectDir().toPath().resolve("src").resolve("helm").resolve(project.getName()));
                 chartBuilder.getMetadataBuilder().setVersion(project.getVersion().toString());
                 chartWriter.write(chartBuilder);
