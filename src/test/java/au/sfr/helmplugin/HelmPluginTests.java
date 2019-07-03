@@ -23,41 +23,6 @@ class HelmPluginTests {
 
     @Test
     @Order(1)
-    void testHelmDownload() throws Exception {
-        setUpTestProject();
-
-        GradleRunner.create()
-                .withProjectDir(testProjectDir.toFile())
-                .withPluginClasspath()
-                .withDebug(true)
-                .withArguments(HelmPlugin.DOWNLOAD_TASK, "--stacktrace")
-                .forwardStdOutput(new BufferedWriter(new OutputStreamWriter(System.out)))
-                .build();
-
-        ProcessBuilder pb = new ProcessBuilder(HelmPlugin.HELM_EXEC_LOCATION + "helm");
-        pb.inheritIO();
-        Process process = pb.start();
-        int code = process.waitFor();
-        Assert.assertEquals(0, code);
-    }
-
-    @Test
-    @Order(2)
-    void testHelmInitChart() throws IOException {
-        setUpTestProject();
-        copyTestChart();
-
-        GradleRunner.create()
-                .withProjectDir(testProjectDir.toFile())
-                .withPluginClasspath()
-                .withDebug(true)
-                .withArguments(HelmPlugin.INIT_CLIENT_TASK, "--stacktrace")
-                .forwardStdOutput(new BufferedWriter(new OutputStreamWriter(System.out)))
-                .build();
-    }
-
-    @Test
-    @Order(3)
     void testPackHelmChart() throws IOException {
         setUpTestProject();
         copyTestChart();

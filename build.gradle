@@ -12,7 +12,11 @@ repositories {
 }
 
 dependencies {
-    compile("org.apache.commons:commons-compress:1.18")
+    compile('io.netty:netty-tcnative-boringssl-static:2.0.25.Final')
+    compile("org.microbean:microbean-helm:2.8.2.1.1.1") {
+        exclude group: 'io.netty'
+    }
+
     testImplementation gradleTestKit()
     testImplementation("junit:junit:4.12")
     testRuntime("org.junit.vintage:junit-vintage-engine:5.4.2")
