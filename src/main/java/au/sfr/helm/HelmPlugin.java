@@ -1,11 +1,11 @@
 package au.sfr.helm;
 
+import au.sfr.helm.writer.TapeArchiveChartWriter;
 import hapi.chart.ChartOuterClass;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.microbean.helm.chart.DirectoryChartLoader;
-import org.microbean.helm.chart.TapeArchiveChartWriter;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -106,7 +106,7 @@ public class HelmPlugin implements Plugin<Project> {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(publishUrl)).PUT(HttpRequest.BodyPublishers.ofFile(chartFile.toPath())).build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() != 200) {
-                    String result = "WARNING: POST code " + response.statusCode() + "\n" + response.body();
+                    String result = "WARNING: PUT response code " + response.statusCode() + "\n" + response.body();
                     if (helm.isIgnorePushError()) {
                         System.out.println(result);
                     } else {
