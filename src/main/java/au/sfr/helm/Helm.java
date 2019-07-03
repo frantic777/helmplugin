@@ -1,25 +1,32 @@
 package au.sfr.helm;
 
-import java.util.HashMap;
-import java.util.Map;
+import groovy.lang.Closure;
+import org.gradle.api.Project;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Helm {
     /**
      * Repo name -> details
      */
-    private Map<String, Repository> repositories = new HashMap<>();
+    private Project project;
+    private List<Repository> repositories = new ArrayList<>();
     private boolean sslChecksDisabled = false;
     private boolean ignorePushError = false;
 
-    public Helm() {
+    public Helm(Project project) {
+        this.project = project;
     }
 
-    public Map<String, Repository> getRepositories() {
+    public void repository(Closure closure) {
+        Repository repository = new Repository();
+        project.configure(repository, closure);
+        repositories.add(repository);
+    }
+
+    public List<Repository> getRepositories() {
         return repositories;
-    }
-
-    public void setRepositories(Map<String, Repository> repositories) {
-        this.repositories = repositories;
     }
 
     public boolean isSslChecksDisabled() {
@@ -39,14 +46,27 @@ public class Helm {
     }
 
     public static class Repository {
+        private String name;
         private String url;
         private String user;
         private String password;
 
-        public Repository(String url, String user, String password) {
+        public Repository() {
+        }
+
+        public Repository(String name, String url, String user, String password) {
+            this.name = name;
             this.url = url;
             this.user = user;
             this.password = password;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
         }
 
         public String getUrl() {

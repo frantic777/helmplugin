@@ -3,6 +3,7 @@ package au.sfr.helm;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.plugins.ExtensionAware;
 import org.microbean.helm.chart.DirectoryChartLoader;
 import org.microbean.helm.chart.TapeArchiveChartWriter;
 
@@ -67,10 +68,10 @@ public class HelmPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
-        Helm helm = project.getExtensions().create("helm", Helm.class);
+        Helm helm = project.getExtensions().create("helm", Helm.class, project);
         project.afterEvaluate(prj -> {
-            helm.getRepositories().forEach((name, repository) -> {
-                prj.getTasks().create(PUSH_CHART_TASK + name, DefaultTask.class, task -> pushChartTask(task, helm, repository));
+            helm.getRepositories().forEach((repository) -> {
+                prj.getTasks().create(PUSH_CHART_TASK + repository.getName(), DefaultTask.class, task -> pushChartTask(task, helm, repository));
             });
         });
         project.getTasks().create(PACK_TASK, DefaultTask.class, this::packHelmTask);
