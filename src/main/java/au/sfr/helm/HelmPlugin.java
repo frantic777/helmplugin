@@ -1,9 +1,9 @@
 package au.sfr.helm;
 
+import hapi.chart.ChartOuterClass;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.plugins.ExtensionAware;
 import org.microbean.helm.chart.DirectoryChartLoader;
 import org.microbean.helm.chart.TapeArchiveChartWriter;
 
@@ -133,7 +133,9 @@ public class HelmPlugin implements Plugin<Project> {
                     System.out.println("Created " + chartLocation.toString() + " file");
                 }
                 TapeArchiveChartWriter chartWriter = new TapeArchiveChartWriter(new FileOutputStream(chartLocation));
-                chartWriter.write(new DirectoryChartLoader().load(project.getProjectDir().toPath().resolve("src").resolve("helm").resolve(project.getName())));
+                ChartOuterClass.Chart.Builder chartBuilder = new DirectoryChartLoader().load(project.getProjectDir().toPath().resolve("src").resolve("helm").resolve(project.getName()));
+                chartBuilder.getMetadataBuilder().setVersion(project.getVersion().toString());
+                chartWriter.write(chartBuilder);
                 chartWriter.close();
                 chartFile.set(chartLocation);
             } catch (Exception e) {
