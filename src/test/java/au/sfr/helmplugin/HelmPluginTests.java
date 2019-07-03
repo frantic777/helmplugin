@@ -47,11 +47,11 @@ class HelmPluginTests {
         Files.write(buildFile, ("plugins { id 'au.sfr.helm' }\n" +
                 "helm {\n" +
                         "repository {\n" +
-                            "url = \"http:test\"\n" +
+                            "url = \"http://test\"\n" +
                         "}\n" +
                     "repository {\n" +
-                        "name = 'test'\n" +
-                        "url = \"http:test\"\n" +
+                        "name = \"test\"\n" +
+                        "url = \"http://test\"\n" +
                     "}\n" +
                 "}").getBytes());
         Path propertiesFile = Files.createFile(testProjectDir.resolve("gradle.properties"));
