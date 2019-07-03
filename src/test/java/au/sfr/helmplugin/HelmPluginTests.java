@@ -45,10 +45,14 @@ class HelmPluginTests {
     private void setUpTestProject() throws IOException {
         Path buildFile = Files.createFile(testProjectDir.resolve("build.gradle"));
         Files.write(buildFile, ("plugins { id 'au.sfr.helm' }\n" +
-                "helm {" +
-                        "repository {" +
+                "helm {\n" +
+                        "repository {\n" +
                             "url = \"http:test\"\n" +
-                        "}" +
+                        "}\n" +
+                    "repository {\n" +
+                        "name = 'test'\n" +
+                        "url = \"http:test\"\n" +
+                    "}\n" +
                 "}").getBytes());
         Path propertiesFile = Files.createFile(testProjectDir.resolve("gradle.properties"));
         Files.write(propertiesFile, "version=1.0.1-SNAPSHOT\ngroup=au.sfr\nname=hello".getBytes());

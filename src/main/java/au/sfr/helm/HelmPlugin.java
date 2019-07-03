@@ -75,7 +75,6 @@ public class HelmPlugin implements Plugin<Project> {
             });
         });
         project.getTasks().create(PACK_TASK, DefaultTask.class, this::packHelmTask);
-//        project.getTasks().create(INSTALL_TASK, DefaultTask.class, this::);
     }
 
     private void pushChartTask(DefaultTask task, Helm helm, Helm.Repository repository) {
@@ -83,6 +82,7 @@ public class HelmPlugin implements Plugin<Project> {
         task.setDependsOn(Collections.singleton(PACK_TASK));
         task.doLast(t -> {
             File chartFile = HelmPlugin.chartFile.get();
+            System.out.println("Publishing " + HelmPlugin.chartFile.get());
             if (chartFile == null) {
                 throw new RuntimeException("Build chart first");
             } else if (repository.getUrl() == null || repository.getUrl().isEmpty()) {
@@ -100,7 +100,7 @@ public class HelmPlugin implements Plugin<Project> {
                     return new PasswordAuthentication(repository.getUser(), repository.getPassword().toCharArray());
                 }
             }).build();
-            String publishUrl = helm.getRepositories() + "/" + getLastFile(chartFile.toString());
+            String publishUrl = repository.getUrl() + "/" + getLastFile(chartFile.toString());
             try {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(publishUrl)).PUT(HttpRequest.BodyPublishers.ofFile(chartFile.toPath())).build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
