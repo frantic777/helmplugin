@@ -43,6 +43,12 @@ public class Helm {
         private String user;
         private String password;
 
+        public Repository(String url, String user, String password) {
+            this.url = url;
+            this.user = user;
+            this.password = password;
+        }
+
         public String getUrl() {
             return url;
         }
