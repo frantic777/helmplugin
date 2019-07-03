@@ -101,6 +101,7 @@ public class HelmPlugin implements Plugin<Project> {
                 }
             }).build();
             String publishUrl = repository.getUrl() + "/" + getLastFile(chartFile.toString());
+            System.out.println("To " + publishUrl);
             try {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(publishUrl)).PUT(HttpRequest.BodyPublishers.ofFile(chartFile.toPath())).build();
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
