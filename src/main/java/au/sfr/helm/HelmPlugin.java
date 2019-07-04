@@ -152,6 +152,7 @@ public class HelmPlugin implements Plugin<Project> {
                     AtomicBoolean alreadyInstalled = new AtomicBoolean(false);
                     releases.forEachRemaining(release -> release.getReleasesList().forEach(r -> {
                         if (r.getName().equals(releaseName)) {
+                            System.out.println("Release " + releaseName + " found: " + r.getInfo().getStatus().toString());
                             alreadyInstalled.set(true);
                         }
                     }));
