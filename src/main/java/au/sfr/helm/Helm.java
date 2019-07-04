@@ -12,11 +12,29 @@ public class Helm {
      */
     private Project project;
     private List<Repository> repositories = new ArrayList<>();
+    private String namespace = "default";
+    private String releaseName = "";
     private boolean sslChecksDisabled = false;
     private boolean ignorePushError = false;
 
     public Helm(Project project) {
         this.project = project;
+    }
+
+    public String getNamespace() {
+        return namespace;
+    }
+
+    public void setNamespace(String namespace) {
+        this.namespace = namespace;
+    }
+
+    public String getReleaseName() {
+        return releaseName;
+    }
+
+    public void setReleaseName(String releaseName) {
+        this.releaseName = releaseName;
     }
 
     public void repository(Closure closure) {
