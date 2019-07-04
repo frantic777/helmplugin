@@ -1,10 +1,8 @@
 package au.sfr.helm;
 
 import hapi.chart.ChartOuterClass;
-import hapi.services.tiller.Tiller.InstallReleaseRequest;
-import hapi.services.tiller.Tiller.InstallReleaseResponse;
-import hapi.services.tiller.Tiller.ListReleasesRequest;
-import hapi.services.tiller.Tiller.UpdateReleaseRequest;
+import hapi.services.tiller.Tiller.*;
+import io.fabric8.kubernetes.api.model.NamedContext;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
@@ -38,9 +36,11 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -49,6 +49,8 @@ import static io.fabric8.kubernetes.client.Config.KUBERNETES_KUBECONFIG_FILE;
 public class HelmPlugin implements Plugin<Project> {
     public static final String PACK_TASK = "helmPack";
     public static final String INSTALL_TASK = "helmInstall";
+    public static final String DELETE_TASK = "helmDelete";
+    public static final String PURGE_TASK = "helmPurge";
     public static final String PUSH_CHART_TASK = "helmPushChart";
     private static final String HELM_GROUP = "helm";
     private static final AtomicReference<File> chartFile = new AtomicReference<>();
@@ -124,8 +126,13 @@ public class HelmPlugin implements Plugin<Project> {
                 File kubeConfigFile = new File(
                         Utils.getSystemPropertyOrEnvVar(KUBERNETES_KUBECONFIG_FILE, new File(getHomeDir(), ".kube" + File.separator + "config").toString()));
                 io.fabric8.kubernetes.api.model.Config k8sConfig = KubeConfigUtils.parseConfig(kubeConfigFile);
-                k8sConfig.getContexts().forEach(ctx -> prj.getTasks().create(INSTALL_TASK + "-" + ctx.getName(), DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, ctx.getName())));
-                prj.getTasks().create(INSTALL_TASK, DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, null));
+                List<String> ctxNames = k8sConfig.getContexts().stream().map(NamedContext::getName).collect(Collectors.toList());
+                ctxNames.forEach(ctxName -> {
+                    prj.getTasks().create(INSTALL_TASK + "-" + ctxName, DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, ctxName));
+                    prj.getTasks().create(DELETE_TASK + "-" + ctxName, DefaultTask.class, task -> deleteChartTask(task, helm, ctxName, false));
+                    prj.getTasks().create(PURGE_TASK + "-" + ctxName, DefaultTask.class, task -> deleteChartTask(task, helm, ctxName, true));
+                });
+
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
@@ -147,21 +154,11 @@ public class HelmPlugin implements Plugin<Project> {
                 try (DefaultKubernetesClient client = new DefaultKubernetesClient(config);
                      Tiller tiller = new Tiller(client);
                      ReleaseManager releaseManager = new ReleaseManager(tiller)) {
-                    Iterator<hapi.services.tiller.Tiller.ListReleasesResponse> releases = releaseManager.list(ListReleasesRequest.newBuilder().build());
                     String releaseName = helm.getReleaseName().isEmpty() ? task.getProject().getName() : helm.getReleaseName();
-                    AtomicBoolean alreadyInstalled = new AtomicBoolean(false);
-                    releases.forEachRemaining(release -> release.getReleasesList().forEach(r -> {
-                        String currentReleaseName = r.getName();
-                        System.out.println("Found release " + currentReleaseName + ". Status: " + r.getInfo().getStatus().getCode().toString());
-                        if (currentReleaseName.equals(releaseName)) {
-                            alreadyInstalled.set(true);
-                        }
-                    }));
-
-                    if (!alreadyInstalled.get()) {
-                        installChart(chart, releaseManager, releaseName, helm.getNamespace());
+                    if (!releaseExists(releaseManager, releaseName)) {
+                        installChart(chart, releaseManager, releaseName, helm.getNamespace(), helm.getTimeout());
                     } else {
-                        updateChart(chart, releaseManager, releaseName);
+                        updateChart(chart, releaseManager, releaseName, helm.getTimeout());
                     }
                 }
             } catch (Exception ex) {
@@ -171,9 +168,59 @@ public class HelmPlugin implements Plugin<Project> {
 
     }
 
-    private void installChart(ChartOuterClass.Chart.Builder chart, ReleaseManager releaseManager, String releaseName, String namespace) throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
+    private void deleteChartTask(DefaultTask task, Helm helm, String context, boolean purge) {
+        task.setGroup(HELM_GROUP);
+        task.setDependsOn(Collections.singleton(PACK_TASK));
+        task.doLast(t -> {
+            try {
+                TapeArchiveChartLoader chartLoader = new TapeArchiveChartLoader();
+                ChartOuterClass.Chart.Builder chart = chartLoader.load(new TarInputStream(new GZIPInputStream(new FileInputStream(chartFile.get()))));
+
+                Config config = Config.autoConfigure(context);
+
+                try (DefaultKubernetesClient client = new DefaultKubernetesClient(config);
+                     Tiller tiller = new Tiller(client);
+                     ReleaseManager releaseManager = new ReleaseManager(tiller)) {
+                    String releaseName = helm.getReleaseName().isEmpty() ? task.getProject().getName() : helm.getReleaseName();
+                    if (releaseExists(releaseManager, releaseName)) {
+                        uninstallRelease(helm, releaseManager, releaseName, purge);
+                    } else {
+                        System.out.println("Release doesn't exist, skipping");
+                    }
+                }
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+
+    }
+
+    private boolean releaseExists(ReleaseManager releaseManager, String releaseName) {
+        Iterator<ListReleasesResponse> releases = releaseManager.list(ListReleasesRequest.newBuilder().build());
+        AtomicBoolean installed = new AtomicBoolean(false);
+        releases.forEachRemaining(release -> release.getReleasesList().forEach(r -> {
+            String currentReleaseName = r.getName();
+            System.out.println("Found release " + currentReleaseName + ". Status: " + r.getInfo().getStatus().getCode().toString());
+            if (currentReleaseName.equals(releaseName)) {
+                installed.set(true);
+            }
+        }));
+        return installed.get();
+    }
+
+    private void uninstallRelease(Helm helm, ReleaseManager releaseManager, String releaseName, boolean purge) throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
+        UninstallReleaseRequest.Builder requestBuilder = UninstallReleaseRequest.newBuilder();
+        requestBuilder.setTimeout(helm.getTimeout());
+        requestBuilder.setName(releaseName);
+        requestBuilder.setPurge(purge);
+        Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(requestBuilder.build());
+        releaseFuture.get();
+    }
+
+
+    private void installChart(ChartOuterClass.Chart.Builder chart, ReleaseManager releaseManager, String releaseName, String namespace, long timeout) throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
         InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
-        requestBuilder.setTimeout(300L);
+        requestBuilder.setTimeout(timeout);
         requestBuilder.setName(releaseName);
         requestBuilder.setNamespace(namespace);
         requestBuilder.setWait(true);
@@ -181,9 +228,9 @@ public class HelmPlugin implements Plugin<Project> {
         releaseFuture.get();
     }
 
-    private void updateChart(ChartOuterClass.Chart.Builder chart, ReleaseManager releaseManager, String releaseName) throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
+    private void updateChart(ChartOuterClass.Chart.Builder chart, ReleaseManager releaseManager, String releaseName, long timeout) throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
         UpdateReleaseRequest.Builder requestBuilder = UpdateReleaseRequest.newBuilder();
-        requestBuilder.setTimeout(300L);
+        requestBuilder.setTimeout(timeout);
         requestBuilder.setName(releaseName);
         requestBuilder.setWait(true);
         Future<hapi.services.tiller.Tiller.UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);

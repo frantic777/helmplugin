@@ -14,11 +14,20 @@ public class Helm {
     private List<Repository> repositories = new ArrayList<>();
     private String namespace = "default";
     private String releaseName = "";
+    private long timeout = 300;
     private boolean sslChecksDisabled = false;
     private boolean ignorePushError = false;
 
     public Helm(Project project) {
         this.project = project;
+    }
+
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
     }
 
     public String getNamespace() {
