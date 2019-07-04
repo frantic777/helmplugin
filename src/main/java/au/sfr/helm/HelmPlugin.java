@@ -48,7 +48,7 @@ import static io.fabric8.kubernetes.client.Config.KUBERNETES_KUBECONFIG_FILE;
 
 public class HelmPlugin implements Plugin<Project> {
     public static final String PACK_TASK = "helmPack";
-    public static final String INSTALL_TASK = "helmInstall";
+    public static final String INSTALL_OR_UPGRADE_TASK = "helmInstallOrUpgrade";
     public static final String DELETE_TASK = "helmDelete";
     public static final String PURGE_TASK = "helmPurge";
     public static final String PUSH_CHART_TASK = "helmPushChart";
@@ -128,7 +128,7 @@ public class HelmPlugin implements Plugin<Project> {
                 io.fabric8.kubernetes.api.model.Config k8sConfig = KubeConfigUtils.parseConfig(kubeConfigFile);
                 List<String> ctxNames = k8sConfig.getContexts().stream().map(NamedContext::getName).collect(Collectors.toList());
                 ctxNames.forEach(ctxName -> {
-                    prj.getTasks().create(INSTALL_TASK + "-" + ctxName, DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, ctxName));
+                    prj.getTasks().create(INSTALL_OR_UPGRADE_TASK + "-" + ctxName, DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, ctxName));
                     prj.getTasks().create(DELETE_TASK + "-" + ctxName, DefaultTask.class, task -> deleteChartTask(task, helm, ctxName, false));
                     prj.getTasks().create(PURGE_TASK + "-" + ctxName, DefaultTask.class, task -> deleteChartTask(task, helm, ctxName, true));
                 });
