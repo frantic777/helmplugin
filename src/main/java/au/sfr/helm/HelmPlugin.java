@@ -142,6 +142,8 @@ public class HelmPlugin implements Plugin<Project> {
     }
 
     private void installOrUpgradeChartTask(DefaultTask task, Helm helm, String context) {
+        task.setGroup(HELM_GROUP);
+        task.setDependsOn(Collections.singleton(PACK_TASK));
         task.doLast(t -> {
             try {
                 TapeArchiveChartLoader chartLoader = new TapeArchiveChartLoader();
