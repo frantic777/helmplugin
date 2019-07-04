@@ -151,13 +151,13 @@ public class HelmPlugin implements Plugin<Project> {
                     String releaseName = helm.getReleaseName().isEmpty() ? task.getProject().getName() : helm.getReleaseName();
                     AtomicBoolean alreadyInstalled = new AtomicBoolean(false);
                     releases.forEachRemaining(release -> release.getReleasesList().forEach(r -> {
+                        System.out.println("Found release " + releaseName + ". Status " + r.getInfo().getStatus().toString());
                         if (r.getName().equals(releaseName)) {
-                            System.out.println("Release " + releaseName + " found: " + r.getInfo().getStatus().toString());
                             alreadyInstalled.set(true);
                         }
                     }));
 
-                    if (alreadyInstalled.get()) {
+                    if (!alreadyInstalled.get()) {
                         installChart(chart, releaseManager, releaseName, helm.getNamespace());
                     } else {
                         updateChart(chart, releaseManager, releaseName);
