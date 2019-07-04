@@ -120,7 +120,7 @@ public class HelmPlugin implements Plugin<Project> {
     public void apply(Project project) {
         Helm helm = project.getExtensions().create("helm", Helm.class, project);
         project.afterEvaluate(prj -> {
-            helm.getRepositories().forEach((repository) -> prj.getTasks().create(PUSH_CHART_TASK + repository.getName(), DefaultTask.class, task -> pushChartTask(task, helm, repository)));
+            helm.getRepositories().forEach((repository) -> prj.getTasks().create(PUSH_CHART_TASK + "-" + repository.getName(), DefaultTask.class, task -> pushChartTask(task, helm, repository)));
 
             try {
                 File kubeConfigFile = new File(
