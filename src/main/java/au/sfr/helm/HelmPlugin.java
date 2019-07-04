@@ -151,7 +151,7 @@ public class HelmPlugin implements Plugin<Project> {
                     String releaseName = helm.getReleaseName().isEmpty() ? task.getProject().getName() : helm.getReleaseName();
                     AtomicBoolean alreadyInstalled = new AtomicBoolean(false);
                     releases.forEachRemaining(release -> release.getReleasesList().forEach(r -> {
-                        System.out.println("Found release " + releaseName + ". Status " + r.getInfo().getStatus().toString());
+                        System.out.println("Found release " + r.getName() + ". Status: " + r.getInfo().getStatus().getCode().toString());
                         if (r.getName().equals(releaseName)) {
                             alreadyInstalled.set(true);
                         }
