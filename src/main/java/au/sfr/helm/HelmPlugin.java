@@ -3,6 +3,7 @@ package au.sfr.helm;
 import hapi.chart.ChartOuterClass;
 import hapi.services.tiller.Tiller.InstallReleaseRequest;
 import hapi.services.tiller.Tiller.InstallReleaseResponse;
+import hapi.services.tiller.Tiller.ListReleasesRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
@@ -34,7 +35,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.Iterator;
@@ -49,9 +49,6 @@ import static io.fabric8.kubernetes.client.Config.KUBERNETES_KUBECONFIG_FILE;
 public class HelmPlugin implements Plugin<Project> {
     public static final String PACK_TASK = "helmPack";
     public static final String INSTALL_TASK = "helmInstall";
-    public static final String PURGE_TASK = "helmPurge";
-    public static final String DELETE_TASK = "helmDelete";
-    public static final String UPGRADE_TASK = "helmUpgrade";
     public static final String PUSH_CHART_TASK = "helmPushChart";
     private static final String HELM_GROUP = "helm";
     private static final AtomicReference<File> chartFile = new AtomicReference<>();
@@ -64,12 +61,12 @@ public class HelmPlugin implements Plugin<Project> {
             }
 
             @Override
-            public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
+            public void checkClientTrusted(X509Certificate[] arg0, String arg1) {
                 // Not implemented
             }
 
             @Override
-            public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
+            public void checkServerTrusted(X509Certificate[] arg0, String arg1) {
                 // Not implemented
             }
         }};
@@ -121,9 +118,7 @@ public class HelmPlugin implements Plugin<Project> {
     public void apply(Project project) {
         Helm helm = project.getExtensions().create("helm", Helm.class, project);
         project.afterEvaluate(prj -> {
-            helm.getRepositories().forEach((repository) -> {
-                prj.getTasks().create(PUSH_CHART_TASK + repository.getName(), DefaultTask.class, task -> pushChartTask(task, helm, repository));
-            });
+            helm.getRepositories().forEach((repository) -> prj.getTasks().create(PUSH_CHART_TASK + repository.getName(), DefaultTask.class, task -> pushChartTask(task, helm, repository)));
 
             try {
                 File kubeConfigFile = new File(
@@ -148,24 +143,21 @@ public class HelmPlugin implements Plugin<Project> {
                 ChartOuterClass.Chart.Builder chart = chartLoader.load(new TarInputStream(new GZIPInputStream(new FileInputStream(chartFile.get()))));
 
                 Config config = Config.autoConfigure(context);
-                config.setNamespace(helm.getNamespace());
 
                 try (DefaultKubernetesClient client = new DefaultKubernetesClient(config);
                      Tiller tiller = new Tiller(client);
                      ReleaseManager releaseManager = new ReleaseManager(tiller)) {
-                    Iterator<hapi.services.tiller.Tiller.ListReleasesResponse> releases = releaseManager.list(hapi.services.tiller.Tiller.ListReleasesRequest.newBuilder().build());
+                    Iterator<hapi.services.tiller.Tiller.ListReleasesResponse> releases = releaseManager.list(ListReleasesRequest.newBuilder().build());
                     String releaseName = helm.getReleaseName().isEmpty() ? task.getProject().getName() : helm.getReleaseName();
                     AtomicBoolean alreadyInstalled = new AtomicBoolean(false);
-                    releases.forEachRemaining(release -> {
-                        release.getReleasesList().forEach(r -> {
-                            if (r.getName().equals(releaseName)) {
-                                alreadyInstalled.set(true);
-                            }
-                        });
-                    });
+                    releases.forEachRemaining(release -> release.getReleasesList().forEach(r -> {
+                        if (r.getName().equals(releaseName)) {
+                            alreadyInstalled.set(true);
+                        }
+                    }));
 
                     if (alreadyInstalled.get()) {
-                        installChart(chart, releaseManager, releaseName);
+                        installChart(chart, releaseManager, releaseName, helm.getNamespace());
                     } else {
                         updateChart(chart, releaseManager, releaseName);
                     }
@@ -177,10 +169,11 @@ public class HelmPlugin implements Plugin<Project> {
 
     }
 
-    private void installChart(ChartOuterClass.Chart.Builder chart, ReleaseManager releaseManager, String releaseName) throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
+    private void installChart(ChartOuterClass.Chart.Builder chart, ReleaseManager releaseManager, String releaseName, String namespace) throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
         InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
         requestBuilder.setTimeout(300L);
         requestBuilder.setName(releaseName);
+        requestBuilder.setNamespace(namespace);
         requestBuilder.setWait(true);
         Future<InstallReleaseResponse> releaseFuture = releaseManager.install(requestBuilder, chart);
         releaseFuture.get();
