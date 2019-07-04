@@ -130,7 +130,7 @@ public class HelmPlugin implements Plugin<Project> {
                         Utils.getSystemPropertyOrEnvVar(KUBERNETES_KUBECONFIG_FILE, new File(getHomeDir(), ".kube" + File.separator + "config").toString()));
                 io.fabric8.kubernetes.api.model.Config k8sConfig = KubeConfigUtils.parseConfig(kubeConfigFile);
                 k8sConfig.getContexts().forEach(ctx -> prj.getTasks().create(INSTALL_TASK + "-" + ctx.getName(), DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, ctx.getName())));
-                prj.getTasks().create(INSTALL_TASK + "default", DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, null));
+                prj.getTasks().create(INSTALL_TASK, DefaultTask.class, task -> installOrUpgradeChartTask(task, helm, null));
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
