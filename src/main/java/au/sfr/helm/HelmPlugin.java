@@ -39,7 +39,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -53,7 +52,6 @@ public class HelmPlugin implements Plugin<Project> {
     public static final String PURGE_TASK = "helmPurge";
     public static final String PUSH_CHART_TASK = "helmPushChart";
     private static final String HELM_GROUP = "helm";
-    private static final AtomicReference<File> chartFile = new AtomicReference<>();
     private static SSLContext sslContext;
 
     private static void disableSSLCertificateChecking() {
@@ -147,7 +145,7 @@ public class HelmPlugin implements Plugin<Project> {
         task.doLast(t -> {
             try {
                 TapeArchiveChartLoader chartLoader = new TapeArchiveChartLoader();
-                ChartOuterClass.Chart.Builder chart = chartLoader.load(new TarInputStream(new GZIPInputStream(new FileInputStream(chartFile.get()))));
+                ChartOuterClass.Chart.Builder chart = chartLoader.load(new TarInputStream(new GZIPInputStream(new FileInputStream(getChartLocation(t.getProject())))));
 
                 Config config = Config.autoConfigure(context);
 
@@ -173,9 +171,6 @@ public class HelmPlugin implements Plugin<Project> {
         task.setDependsOn(Collections.singleton(PACK_TASK));
         task.doLast(t -> {
             try {
-                TapeArchiveChartLoader chartLoader = new TapeArchiveChartLoader();
-                ChartOuterClass.Chart.Builder chart = chartLoader.load(new TarInputStream(new GZIPInputStream(new FileInputStream(chartFile.get()))));
-
                 Config config = Config.autoConfigure(context);
 
                 try (DefaultKubernetesClient client = new DefaultKubernetesClient(config);
@@ -241,8 +236,8 @@ public class HelmPlugin implements Plugin<Project> {
         task.setGroup(HELM_GROUP);
         task.setDependsOn(Collections.singleton(PACK_TASK));
         task.doLast(t -> {
-            File chartFile = HelmPlugin.chartFile.get();
-            System.out.println("Publishing " + HelmPlugin.chartFile.get());
+            File chartFile = getChartLocation(t.getProject());
+            System.out.println("Publishing " + chartFile);
             if (chartFile == null) {
                 throw new RuntimeException("Build chart first");
             } else if (repository.getUrl() == null || repository.getUrl().isEmpty()) {
@@ -286,7 +281,7 @@ public class HelmPlugin implements Plugin<Project> {
         task.doLast(t -> {
             try {
                 Project project = task.getProject();
-                File chartLocation = project.getProjectDir().toPath().resolve("build").resolve("helm").resolve(project.getName() + '-' + project.getVersion() + ".tgz").toFile();
+                File chartLocation = getChartLocation(project);
                 if (chartLocation.getParentFile().mkdirs()) {
                     System.out.println("Created " + chartLocation.getParentFile().toString() + " directory");
                 }
@@ -298,11 +293,14 @@ public class HelmPlugin implements Plugin<Project> {
                 chartBuilder.getMetadataBuilder().setVersion(project.getVersion().toString());
                 chartWriter.write(chartBuilder);
                 chartWriter.close();
-                chartFile.set(chartLocation);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    private File getChartLocation(Project project) {
+        return project.getProjectDir().toPath().resolve("build").resolve("helm").resolve(project.getName() + '-' + project.getVersion() + ".tgz").toFile();
     }
 
     private String getLastFile(String latestUrl) {
